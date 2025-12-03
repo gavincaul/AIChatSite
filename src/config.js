@@ -1,1 +1,1 @@
-export const BACKEND_URL = "REPLACE_WITH_BACKEND";
+export const BACKEND_URL = process.env.REACT_APP_BACKEND_URL
