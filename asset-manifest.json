@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/gavincaul/AIChatSite.git/static/css/main.a1f27e1a.css",
-    "main.js": "/gavincaul/AIChatSite.git/static/js/main.29acb697.js",
-    "static/js/453.8f9d85b7.chunk.js": "/gavincaul/AIChatSite.git/static/js/453.8f9d85b7.chunk.js",
-    "index.html": "/gavincaul/AIChatSite.git/index.html",
-    "main.a1f27e1a.css.map": "/gavincaul/AIChatSite.git/static/css/main.a1f27e1a.css.map",
-    "main.29acb697.js.map": "/gavincaul/AIChatSite.git/static/js/main.29acb697.js.map",
-    "453.8f9d85b7.chunk.js.map": "/gavincaul/AIChatSite.git/static/js/453.8f9d85b7.chunk.js.map"
+    "main.css": "/gavincaul/AIChatSite/static/css/main.a1f27e1a.css",
+    "main.js": "/gavincaul/AIChatSite/static/js/main.0d702118.js",
+    "static/js/453.8f9d85b7.chunk.js": "/gavincaul/AIChatSite/static/js/453.8f9d85b7.chunk.js",
+    "index.html": "/gavincaul/AIChatSite/index.html",
+    "main.a1f27e1a.css.map": "/gavincaul/AIChatSite/static/css/main.a1f27e1a.css.map",
+    "main.0d702118.js.map": "/gavincaul/AIChatSite/static/js/main.0d702118.js.map",
+    "453.8f9d85b7.chunk.js.map": "/gavincaul/AIChatSite/static/js/453.8f9d85b7.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.a1f27e1a.css",
-    "static/js/main.29acb697.js"
+    "static/js/main.0d702118.js"
   ]
 }
