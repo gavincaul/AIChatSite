@@ -1,0 +1,1 @@
+export const BACKEND_URL = "REPLACE_WITH_BACKEND";

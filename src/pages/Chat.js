@@ -4,6 +4,7 @@ import chatOptions from "../data/chatOptions.json";
 import Navbar from "../components/Navbar";
 import ReactMarkdown from "react-markdown";
 import "../styles/Chat.css";
+import { BACKEND_URL } from "../config";
 
 const Chat = () => {
   const { id } = useParams(); //Chat ID
@@ -183,11 +184,8 @@ const Chat = () => {
       history: backendHistoryToSend,
     };
     try {
-      // Add these lines:
-      const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1";
-      const API_PORT = process.env.REACT_APP_API_PORT || "9000";
 
-      const res = await fetch(`${API_URL}:${API_PORT}/chat`, {
+      const res = await fetch(`${BACKEND_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json;charset=UTF-8",
