@@ -12,16 +12,23 @@ jobs:
       matrix:
         node-version: [16.x]
     
-    env:
-      REACT_APP_BACKEND_URL: https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}
-    
     steps:
       - uses: actions/checkout@v4
+      
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
+
+      - name: Create .env file with backend URL
+        run: |
+          echo "REACT_APP_BACKEND_URL=https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}" > .env
+          echo "Created .env file with contents:"
+          cat .env
+          
+          # Also create .env.production for good measure
+          echo "REACT_APP_BACKEND_URL=https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}" > .env.production
       
       - id: get-repo-values
         run: echo "url=https://github.com/gavincaul/AIChatSite" >> $GITHUB_OUTPUT
@@ -35,25 +42,28 @@ jobs:
       
       - run: npm ci
       
-      # Add this debug step to verify the variable is set
-      - name: Debug environment variable
+
+      - name: Verify env var in npm context
         run: |
-          echo "REACT_APP_BACKEND_URL is set to: $REACT_APP_BACKEND_URL"
-          echo "Checking if secrets exist:"
-          echo "BACKEND_IP: ${{ secrets.BACKEND_IP != '' && 'SET' || 'NOT SET' }}"
-          echo "BACKEND_PORT: ${{ secrets.BACKEND_PORT != '' && 'SET' || 'NOT SET' }}"
+          echo "Checking if npm can see REACT_APP_BACKEND_URL:"
+          npm run env | grep REACT_APP_BACKEND_URL || echo "Not found in npm env"
       
       - run: npm run test -- --coverage |& tee ./public/test_report.txt
       
       - run: echo "<html><head><meta http-equiv='refresh' content='0; URL=${{github.server_url}}/${{github.repository}}' /></head><body>Redirecting to repository</body></html>" > ./public/github.html
 
-      # Add this step to actually BUILD the React app
-      - name: Build React app
-        run: npm run build
-        
-        # Or if you use a different build command
-        # run: CI=false npm run build
 
+      - name: Build React app with env var
+        env:
+          REACT_APP_BACKEND_URL: https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}
+        run: |
+          echo "Building with REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL"
+          CI=false npm run build
+          
+          # Check what was actually embedded
+          echo "Searching for backend URL in built files:"
+          grep -r "https://" ./build/static/js/ | grep -i backend | head -5 || echo "No backend URL found"
+      
       - name: Deploy
         run: |
           git config --global user.name ${user_name}
