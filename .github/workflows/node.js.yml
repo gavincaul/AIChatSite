@@ -14,65 +14,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
-
-      # STEP 1: DEBUG SECRETS FORMAT AND AVAILABILITY
-      - name: Debug Secrets Format
-        run: |
-          echo "=== SECRETS DEBUG START ==="
-          
-          # Create variables from secrets to test
-          BACKEND_IP="${{ secrets.BACKEND_IP }}"
-          BACKEND_PORT="${{ secrets.BACKEND_PORT }}"
-          
-          echo "BACKEND_IP length: ${#BACKEND_IP}"
-          echo "BACKEND_PORT length: ${#BACKEND_PORT}"
-          
-          # Test if they're empty
-          if [ -z "$BACKEND_IP" ]; then
-            echo "ERROR: BACKEND_IP is EMPTY!"
-          else
-            echo "BACKEND_IP: [hidden] (length: ${#BACKEND_IP})"
-          fi
-          
-          if [ -z "$BACKEND_PORT" ]; then
-            echo "ERROR: BACKEND_PORT is EMPTY!"
-          else
-            echo "BACKEND_PORT: [hidden] (length: ${#BACKEND_PORT})"
-          fi
-          
-          # Construct the full URL
-          FULL_URL="https://${BACKEND_IP}:${BACKEND_PORT}"
-          echo "Constructed URL: $FULL_URL"
-          echo "URL length: ${#FULL_URL}"
-          
-          # Test URL format
-          if [[ $FULL_URL =~ ^https?://.+:[0-9]+$ ]]; then
-            echo "✓ URL format appears valid"
-          else
-            echo "⚠ URL format might be invalid"
-            echo "Expected format: https://IP:PORT or http://IP:PORT"
-          fi
-          
-          echo "=== SECRETS DEBUG END ==="
-
-      - name: Create .env file with backend URL
-        run: |
-          echo "REACT_APP_BACKEND_URL=https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}" > .env
-          echo "Created .env file with contents:"
-          cat .env
-
-          # Also create .env.production for good measure
-          echo "REACT_APP_BACKEND_URL=https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}" > .env.production
-          
-          # List all .env files
-          echo "=== ALL .env FILES ==="
-          ls -la .env* 2>/dev/null || echo "No .env files found"
 
       - id: get-repo-values
         run: echo "url=https://github.com/gavincaul/AIChatSite" >> $GITHUB_OUTPUT
@@ -85,142 +32,15 @@ jobs:
           value: ${{ steps.get-repo-values.outputs.url }}
 
       - run: npm ci
-
-      # STEP 2: DEBUG NPM/CRA ENVIRONMENT
-      - name: Verify env var in npm context
-        run: |
-          echo "=== NPM ENVIRONMENT DEBUG ==="
-          echo "Checking if npm can see REACT_APP_BACKEND_URL:"
-          
-          # Multiple ways to check
-          echo "Method 1 - npm run env:"
-          npm run env | grep -i react_app || echo "No REACT_APP vars found"
-          
-          echo ""
-          echo "Method 2 - Node process.env:"
-          node -e "console.log('REACT_APP_BACKEND_URL:', process.env.REACT_APP_BACKEND_URL || 'UNDEFINED'); console.log('All REACT_APP vars:', Object.keys(process.env).filter(k => k.startsWith('REACT_APP')).join(', ') || 'NONE')"
-          
-          echo ""
-          echo "Method 3 - Shell env:"
-          env | grep -i react_app || echo "No REACT_APP vars in shell"
-          
-          echo "=== END NPM DEBUG ==="
-
-      # STEP 3: MODIFY CONFIG.JS FOR DEBUG OUTPUT
-      - name: Add debug logging to config.js
-        run: |
-          echo "=== MODIFYING CONFIG.JS FOR DEBUG ==="
-          
-          # Backup original config
-          if [ -f src/config.js ]; then
-            cp src/config.js src/config.js.backup
-          fi
-          
-          # Create debug version
-          cat > src/config.js << 'EOF'
-          // DEBUG VERSION - This will show in browser console
-          
-          const backendUrl = process.env.REACT_APP_BACKEND_URL;
-          
-          // These console logs WILL appear in production build
-          console.log('=== CONFIG.JS DEBUG ===');
-          console.log('process.env.REACT_APP_BACKEND_URL raw value:', process.env.REACT_APP_BACKEND_URL);
-          console.log('Type of value:', typeof process.env.REACT_APP_BACKEND_URL);
-          
-          // Check all REACT_APP environment variables
-          const reactAppVars = Object.keys(process.env)
-            .filter(key => key.startsWith('REACT_APP'))
-            .reduce((obj, key) => {
-              obj[key] = process.env[key];
-              return obj;
-            }, {});
-          
-          console.log('All REACT_APP environment variables:', reactAppVars);
-          
-          if (!backendUrl || backendUrl === 'undefined') {
-            console.error('❌ ERROR: REACT_APP_BACKEND_URL is undefined or empty!');
-            console.error('This means Create React App did not inject the environment variable.');
-          } else {
-            console.log('✅ SUCCESS: REACT_APP_BACKEND_URL is set to:', backendUrl);
-          }
-          
-          console.log('=== END CONFIG DEBUG ===');
-          
-          // Export the value
-          export const BACKEND_URL = backendUrl || 'https://fallback.example.com:3000';
-          EOF
-          
-          echo "Created debug config.js:"
-          head -20 src/config.js
-          echo "=== END MODIFICATION ==="
-
       - run: npm run test -- --coverage |& tee ./public/test_report.txt
-
+      
       - run: echo "<html><head><meta http-equiv='refresh' content='0; URL=${{github.server_url}}/${{github.repository}}' /></head><body>Redirecting to repository</body></html>" > ./public/github.html
 
-      # STEP 4: BUILD WITH ENHANCED DEBUGGING
-      - name: Build React app with env var
-        env:
-          REACT_APP_BACKEND_URL: https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}
+      # The fix: Build with cross-env to pass the environment variable
+      - name: Build React app
         run: |
-          echo "=== BUILD DEBUG START ==="
-          echo "Building with REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL"
-          
-          # Verify variable is set in this shell
-          echo "Shell variable check: $REACT_APP_BACKEND_URL"
-          
-          # Check Node sees it
-          echo "Node.js sees it as:"
-          node -e "console.log('Node process.env.REACT_APP_BACKEND_URL:', process.env.REACT_APP_BACKEND_URL || 'UNDEFINED')"
-          
-          # Clean previous build
-          rm -rf build/
-          
-          # Build
-          CI=false npm run build
-          
-          echo ""
-          echo "=== CHECKING BUILT FILES ==="
-          
-          # Find main JS file
-          MAIN_JS=$(find ./build/static/js -name "main*.js" | head -1)
-          if [ -z "$MAIN_JS" ]; then
-            echo "ERROR: Could not find main JS file!"
-            find ./build -type f -name "*.js" | head -5
-          else
-            echo "Main JS file: $MAIN_JS"
-            echo "File size: $(wc -c < "$MAIN_JS") bytes"
-            
-            # Look for our debug messages
-            echo ""
-            echo "Looking for debug messages in built file:"
-            grep -n "CONFIG.JS DEBUG" "$MAIN_JS" && echo "✓ Debug messages found" || echo "✗ Debug messages NOT found"
-            
-            echo ""
-            echo "Looking for REACT_APP_BACKEND_URL value:"
-            # Search for the actual URL pattern
-            grep -o "https://[^\"' ]*" "$MAIN_JS" | grep -v gstatic | grep -v googleapis | head -5 || echo "No URLs found"
-            
-            echo ""
-            echo "Looking for 'undefined' string:"
-            grep -n "undefined" "$MAIN_JS" | head -5 || echo "No 'undefined' found"
-            
-            # Extract a snippet around BACKEND_URL
-            echo ""
-            echo "Snippet containing BACKEND_URL:"
-            grep -o ".{0,50}BACKEND_URL.{0,50}" "$MAIN_JS" 2>/dev/null || echo "Cannot find BACKEND_URL"
-          fi
-          
-          echo "=== BUILD DEBUG END ==="
-
-      # STEP 5: RESTORE ORIGINAL CONFIG (optional)
-      - name: Restore original config.js
-        if: always()
-        run: |
-          if [ -f src/config.js.backup ]; then
-            echo "Restoring original config.js..."
-            mv src/config.js.backup src/config.js
-          fi
+          npm install --save-dev cross-env
+          npx cross-env REACT_APP_BACKEND_URL="https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}" npm run build
 
       - name: Deploy
         run: |
@@ -233,14 +53,3 @@ jobs:
           user_email: "github-actions[bot]@users.noreply.github.com"
           github_token: ${{ secrets.GH_TOKEN }}
           repository: ${{ github.repository }}
-
-      # STEP 6: POST-DEPLOY VERIFICATION
-      - name: Verify Deployment
-        if: always()
-        run: |
-          echo "=== DEPLOYMENT VERIFICATION ==="
-          echo "Check your deployed site for console messages."
-          echo "Open https://gavincaul.github.io/AIChatSite"
-          echo "Then open browser Developer Tools (F12) and check Console tab."
-          echo "You should see 'CONFIG.JS DEBUG' messages."
-          echo "=== END VERIFICATION ==="
