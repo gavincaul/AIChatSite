@@ -7,7 +7,7 @@ import Chat from "./pages/Chat";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/AIChatSite">
       <div className="app">
         <Routes>
           <Route path="/" element={<Home />} />
