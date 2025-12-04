@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/AIChatSite/static/css/main.a1f27e1a.css",
-    "main.js": "/AIChatSite/static/js/main.90e71ee6.js",
-    "static/js/453.8f9d85b7.chunk.js": "/AIChatSite/static/js/453.8f9d85b7.chunk.js",
-    "index.html": "/AIChatSite/index.html",
-    "main.a1f27e1a.css.map": "/AIChatSite/static/css/main.a1f27e1a.css.map",
-    "main.90e71ee6.js.map": "/AIChatSite/static/js/main.90e71ee6.js.map",
-    "453.8f9d85b7.chunk.js.map": "/AIChatSite/static/js/453.8f9d85b7.chunk.js.map"
+    "main.css": "/gavincaul/AIChatSite/static/css/main.a1f27e1a.css",
+    "main.js": "/gavincaul/AIChatSite/static/js/main.413992c9.js",
+    "static/js/453.8f9d85b7.chunk.js": "/gavincaul/AIChatSite/static/js/453.8f9d85b7.chunk.js",
+    "index.html": "/gavincaul/AIChatSite/index.html",
+    "main.a1f27e1a.css.map": "/gavincaul/AIChatSite/static/css/main.a1f27e1a.css.map",
+    "main.413992c9.js.map": "/gavincaul/AIChatSite/static/js/main.413992c9.js.map",
+    "453.8f9d85b7.chunk.js.map": "/gavincaul/AIChatSite/static/js/453.8f9d85b7.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.a1f27e1a.css",
-    "static/js/main.90e71ee6.js"
+    "static/js/main.413992c9.js"
   ]
 }
