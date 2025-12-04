@@ -11,7 +11,10 @@ jobs:
     strategy:
       matrix:
         node-version: [16.x]
-
+    
+    env:
+      REACT_APP_BACKEND_URL: https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}
+    
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
@@ -19,28 +22,46 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
+      
       - id: get-repo-values
         run: echo "url=https://github.com/gavincaul/AIChatSite" >> $GITHUB_OUTPUT
+      
       - name: Update package.json homepage
         uses: jossef/action-set-json-field@v1
         with:
           file: package.json
           field: homepage
           value: ${{ steps.get-repo-values.outputs.url }}
+      
       - run: npm ci
+      
+      # Add this debug step to verify the variable is set
+      - name: Debug environment variable
+        run: |
+          echo "REACT_APP_BACKEND_URL is set to: $REACT_APP_BACKEND_URL"
+          echo "Checking if secrets exist:"
+          echo "BACKEND_IP: ${{ secrets.BACKEND_IP != '' && 'SET' || 'NOT SET' }}"
+          echo "BACKEND_PORT: ${{ secrets.BACKEND_PORT != '' && 'SET' || 'NOT SET' }}"
+      
       - run: npm run test -- --coverage |& tee ./public/test_report.txt
+      
       - run: echo "<html><head><meta http-equiv='refresh' content='0; URL=${{github.server_url}}/${{github.repository}}' /></head><body>Redirecting to repository</body></html>" > ./public/github.html
+
+      # Add this step to actually BUILD the React app
+      - name: Build React app
+        run: npm run build
+        
+        # Or if you use a different build command
+        # run: CI=false npm run build
 
       - name: Deploy
         run: |
           git config --global user.name ${user_name}
           git config --global user.email ${user_email}
           git remote set-url origin https://${github_token}@github.com/${repository}
-          npm run predeploy
           npm run deploy
         env:
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
           github_token: ${{ secrets.GH_TOKEN }}
           repository: ${{ github.repository }}
-          REACT_APP_BACKEND_URL: https://${{ secrets.BACKEND_IP }}:${{ secrets.BACKEND_PORT }}
