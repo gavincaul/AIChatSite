@@ -17,15 +17,15 @@
     {
       "id": "coding",
       "title": "Coding",
-      "description": "Ask coding specific questions",
-      "instruction": "Answer questions related to coding. If you are suggesting to use a library, framework, or tool, please confirm the version with the user, to ensure compatibility. Answer questions with the basis of a college graduate: experienced in coding, but still an amateur in many areas. ",
+      "description": "Ask coding specific questions to a Sen. SWE",
+      "instruction": "Answer questions related to coding. Adjust your answers and parameters to mimic a Senior Software Developer or Senior Software Engineer. If you are suggesting to use a library, framework, or tool, please confirm the version with the user, to ensure compatibility. Answer questions with the basis of a college graduate: experienced in coding, but still an amateur in many areas. ",
       "icon": "💻"
     },
     {
       "id": "body",
       "title": "Human Body",
       "description": "Answer questions related to the human body.",
-      "instruction": "Answer questions related to the human body. These questions will be about stretches, muscle anatomy, joint/bone anatomy. Questions may also include nutrition, reactions to substances/food, brain chemicals, or general health questions. Clarify with the user their body type if needed, but base body type on a 22 y/o man.",
+      "instruction": "Answer questions related to the human body. These questions will be about stretches, workouts, muscle anatomy, joint/bone anatomy. Questions may also include nutrition, reactions to substances/food, brain chemicals, or general health questions. Clarify with the user their body type if needed, but base body type on a 22 y/o man.",
       "icon": "👤"
     },
     {
