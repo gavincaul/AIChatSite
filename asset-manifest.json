@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/AIChatSite/static/css/main.a1f27e1a.css",
-    "main.js": "/AIChatSite/static/js/main.d19b9f8c.js",
+    "main.css": "/AIChatSite/static/css/main.531b8651.css",
+    "main.js": "/AIChatSite/static/js/main.9c0c0fd7.js",
     "static/js/453.8f9d85b7.chunk.js": "/AIChatSite/static/js/453.8f9d85b7.chunk.js",
     "index.html": "/AIChatSite/index.html",
-    "main.a1f27e1a.css.map": "/AIChatSite/static/css/main.a1f27e1a.css.map",
-    "main.d19b9f8c.js.map": "/AIChatSite/static/js/main.d19b9f8c.js.map",
+    "main.531b8651.css.map": "/AIChatSite/static/css/main.531b8651.css.map",
+    "main.9c0c0fd7.js.map": "/AIChatSite/static/js/main.9c0c0fd7.js.map",
     "453.8f9d85b7.chunk.js.map": "/AIChatSite/static/js/453.8f9d85b7.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.a1f27e1a.css",
-    "static/js/main.d19b9f8c.js"
+    "static/css/main.531b8651.css",
+    "static/js/main.9c0c0fd7.js"
   ]
 }
