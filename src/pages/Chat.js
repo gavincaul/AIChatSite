@@ -27,7 +27,7 @@ const Chat = () => {
   const [lineHeight, setLineHeight] = useState(
     parseFloat(localStorage.getItem("chat_lineHeight")) || 1.2
   );
-  const [showControls, setShowControls] = useState(true); // Controls visibility
+  const [showControls, setShowControls] = useState(false); // Controls visibility
 
   const messagesEndRef = useRef(null);
   const chatDetails = chatOptions.chats.find((chat) => chat.id === id);
@@ -184,7 +184,6 @@ const Chat = () => {
       history: backendHistoryToSend,
     };
     try {
-
       const res = await fetch(`${BACKEND_URL}/chat`, {
         method: "POST",
         headers: {
@@ -238,14 +237,34 @@ const Chat = () => {
   // Handle brevity change
   const handleBrevityChange = (level) => {
     setBrevity(level);
-    // Reinitialize with new brevity setting
-    clearChatHistory();
+    localStorage.setItem("chat_brevity", level);
+  };
+
+  const resetSettings = () => {
+    // Reset all settings to their default values
+    setBrevity("normal");
+    setFontSize(16);
+    setLetterSpacing(0);
+    setLineHeight(1.2);
+
+    // Update local storage
+    localStorage.setItem("chat_brevity", "normal");
+    localStorage.setItem("chat_fontSize", "16");
+    localStorage.setItem("chat_letterSpacing", "0");
+    localStorage.setItem("chat_lineHeight", "1.2");
+
+    // Apply the changes to the document
+    document.documentElement.style.setProperty("--message-font-size", `16px`);
+    document.documentElement.style.setProperty(
+      "--message-letter-spacing",
+      `0px`
+    );
+    document.documentElement.style.setProperty("--message-line-height", `1.2`);
   };
 
   const FontTools = {
     Font: {
       value: fontSize,
-      min: 12,
       max: 24,
       step: 1,
       oc: (e) => setFontSize(parseInt(e.target.value)),
@@ -268,19 +287,19 @@ const Chat = () => {
   return (
     <div className="chat-container">
       <Navbar />
-      <div className="chat-header">
+      <div className={`chat-header ${!showControls ? "compact" : ""}`}>
         <div className="header-content">
-          <div className="header-main">
+          <div className={`header-main ${!showControls ? "compact" : ""}`}>
             <div>
               <h1>{chatDetails.title} Chat</h1>
-              <p>{chatDetails.description}</p>
+              {showControls && <p>{chatDetails.description}</p>}
             </div>
             <button
               className="toggle-controls-btn"
               onClick={() => setShowControls(!showControls)}
               title={showControls ? "Hide controls" : "Show controls"}
             >
-              {showControls ? "▲ Hide Controls" : "▼ Show Controls"}
+              {showControls ? "▲ Hide" : "▼ Show Controls"}
             </button>
           </div>
           <div className={`chat-controls ${!showControls ? "hidden" : ""}`}>
@@ -312,14 +331,24 @@ const Chat = () => {
                 Detailed
               </button>
             </div>
-            <button
-              className="clear-history-btn"
-              onClick={clearChatHistory}
-              title="Clear chat history"
-              disabled={isLoading}
-            >
-              Clear History
-            </button>
+            <div className="action-buttons">
+              <button
+                className="clear-history-btn"
+                onClick={clearChatHistory}
+                title="Clear chat history"
+                disabled={isLoading}
+              >
+                Clear History
+              </button>
+              <button
+                className="reset-settings-btn"
+                onClick={resetSettings}
+                title="Reset all settings to default"
+                disabled={isLoading}
+              >
+                Reset Settings
+              </button>
+            </div>
             {Object.entries(FontTools).map(([name, t]) => (
               <div className="size-control" key={name}>
                 <span>
