@@ -177,7 +177,48 @@ const Chat = () => {
     setInput("");
     setIsLoading(true);
     setError(null);
+    async function catch_err(res) {
+      if (res.ok) return null; // no error
 
+      let errMsg = "";
+      const contentType = res.headers.get("content-type");
+
+      try {
+      
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data.error) {
+            errMsg = data.error;
+          } else {
+            errMsg = JSON.stringify(data);
+          }
+        } else {
+          errMsg = await res.text();
+        }
+      } catch (e) {
+
+        errMsg = "Could not parse error message";
+      }
+      console.error(`Error ${res.status}: ${errMsg}`);
+
+      // Map status codes to friendly messages
+      switch (res.status) {
+        case 400:
+          return `${errMsg}`;
+        case 401:
+          return `${errMsg}`;
+        case 403:
+          return `${errMsg}`;
+        case 404:
+          return `${errMsg}`;
+        case 429:
+          return `${errMsg}`;
+        case 500:
+          return `${errMsg}`;
+        default:
+          return `Error ${res.status}: ${errMsg}`;
+      }
+    }
     // POST body matches your Flask app: { chat: <string>, history: [ backend content objects ] }
     const body = {
       chat: input,
@@ -193,9 +234,11 @@ const Chat = () => {
       });
 
       let modelText = "";
+      
       if (!res.ok) {
         // Server error — set a fallback message
-        modelText = "Error occurred";
+        let text = await catch_err(res);
+        modelText = text;
       } else {
         const data = await res.json().catch(() => null);
         // Your Flask returns { "text": response.text }
