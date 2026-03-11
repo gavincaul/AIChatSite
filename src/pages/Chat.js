@@ -6,89 +6,61 @@ import ReactMarkdown from "react-markdown";
 import "../styles/Chat.css";
 import { BACKEND_URL } from "../config";
 
-const Chat = () => {
-  const { id } = useParams(); //Chat ID
+const DEFAULTS = {
+  brevity: "normal",
+  fontSize: 16,
+  letterSpacing: 0,
+  lineHeight: 1.2,
+};
+const lsGet = (k, fallback) => localStorage.getItem(k) ?? fallback;
+
+const toBackend = ({ role, content }) => ({ role, parts: [{ text: content }] });
+const toVisible = ({ role, parts }) => ({
+  role,
+  content: parts?.[0]?.text ?? "",
+});
+
+export default function Chat() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState([]); // visible messages: { role, content }
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [systemPrompt, setSystemPrompt] = useState(null);
-  const [brevity, setBrevity] = useState(
-    localStorage.getItem("chat_brevity") || "normal"
-  );
-  const [fontSize, setFontSize] = useState(
-    parseInt(localStorage.getItem("chat_fontSize")) || 16
-  );
-  const [letterSpacing, setLetterSpacing] = useState(
-    parseFloat(localStorage.getItem("chat_letterSpacing")) || 0
-  );
-  const [lineHeight, setLineHeight] = useState(
-    parseFloat(localStorage.getItem("chat_lineHeight")) || 1.2
-  );
-  const [showControls, setShowControls] = useState(false); // Controls visibility
+  const [settings, setSettings] = useState({
+    brevity: lsGet("chat_brevity", DEFAULTS.brevity),
+    fontSize: Number(lsGet("chat_fontSize", DEFAULTS.fontSize)),
+    letterSpacing: Number(lsGet("chat_letterSpacing", DEFAULTS.letterSpacing)),
+    lineHeight: Number(lsGet("chat_lineHeight", DEFAULTS.lineHeight)),
+  });
+  const [showControls, setShowControls] = useState(false);
+  const bottomRef = useRef(null);
 
-  const messagesEndRef = useRef(null);
-  const chatDetails = chatOptions.chats.find((chat) => chat.id === id);
+  const chatDetails = chatOptions.chats.find((c) => c.id === id);
 
-  /*
-  FRONTEND SUPPORT
-  */
-  // validation helper
-  function validationCheck(str) {
-    return str === null || str.match(/^\s*$/) !== null;
-  }
+  // Persist settings
+  useEffect(() => {
+    Object.entries(settings).forEach(([k, v]) =>
+      localStorage.setItem(`chat_${k}`, v),
+    );
+  }, [settings]);
 
-  // Convert backend content-format -> visible message
-  const backendToVisible = (backendMsg) => {
-    // backendMsg is like: { role: 'user'|'model', parts: [{ text: '...' }, ...] }
-    const textPart =
-      Array.isArray(backendMsg.parts) &&
-      backendMsg.parts[0] &&
-      backendMsg.parts[0].text
-        ? backendMsg.parts[0].text
-        : "";
-    return { role: backendMsg.role, content: textPart };
-  };
+  // Auto-scroll
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  // Convert visible -> backend
-  const visibleToBackend = (visibleMsg) => {
-    return { role: visibleMsg.role, parts: [{ text: visibleMsg.content }] };
-  };
-
-  // Clear chat history and reset the session
-  const clearChatHistory = () => {
-    const archetypePrompt = `You are a specialist in the field of ${
-      chatDetails.title
-    }. ${chatDetails.instruction}. ${
-      brevity === "brief"
-        ? "Please keep your responses concise and to the point."
-        : brevity === "detailed"
-        ? "Please provide detailed and thorough responses."
-        : "Provide balanced responses."
-    }`;
-
-    localInitializeSession(archetypePrompt);
-    setError(null);
-  };
-
-  // Local initialization: create backend-friendly initial history and visible greeting
-  const localInitializeSession = (archetypePrompt) => {
-    const initialAckBackend = {
+  // Init session
+  const initSession = (prompt) => {
+    const ack = {
       role: "model",
       parts: [{ text: `Initialized as ${chatDetails.title} specialist.` }],
     };
-
-    sessionStorage.setItem(`chat_system_prompt_${id}`, archetypePrompt);
-    sessionStorage.setItem(
-      `chat_history_${id}`,
-      JSON.stringify([initialAckBackend])
-    );
-
-    setSystemPrompt(archetypePrompt);
-
-    // user-visible greeting (keep UX identical)
+    sessionStorage.setItem(`chat_system_prompt_${id}`, prompt);
+    sessionStorage.setItem(`chat_history_${id}`, JSON.stringify([ack]));
+    setSystemPrompt(prompt);
     setMessages([
       {
         role: "model",
@@ -97,173 +69,75 @@ const Chat = () => {
     ]);
   };
 
-  // Load or initialize session
-  useEffect(() => {
-    if (!chatDetails) {
-      navigate("/");
-      return;
-    }
+  const buildPrompt = (brevity) =>
+    `You are a specialist in ${chatDetails.title}. ${chatDetails.instruction} ${
+      brevity === "brief"
+        ? "Provide responses that are BRIEF and CONCISE. Try to limit yourself to 200 words."
+        : brevity === "detailed"
+          ? "Provide responses that are THOROUGH and PRECISE. Try to limit yourself between 1000 and 2000 words."
+          : "Provide responses that are CONCISE AND PRECISE. Try to limit yourself between 400 and 1000 words."
+    }`;
 
-    const storedBackendHistoryRaw = sessionStorage.getItem(
-      `chat_history_${id}`
-    );
-    const storedSystemPrompt = sessionStorage.getItem(
-      `chat_system_prompt_${id}`
-    );
-    if (storedBackendHistoryRaw && storedSystemPrompt) {
-      setSystemPrompt(storedSystemPrompt);
+  useEffect(() => {
+    if (!chatDetails) return navigate("/");
+    const stored = sessionStorage.getItem(`chat_history_${id}`);
+    const storedPrompt = sessionStorage.getItem(`chat_system_prompt_${id}`);
+    if (stored && storedPrompt) {
+      setSystemPrompt(storedPrompt);
       try {
-        const backendHistory = JSON.parse(storedBackendHistoryRaw);
-        const visible = backendHistory.map(backendToVisible);
-        setMessages(visible);
-      } catch (err) {
-        console.error("Bad stored history, reinitializing:", err);
-        const archetypePrompt = `You are a specialist in the field of ${chatDetails.title}. ${chatDetails.instruction}. Only answer questions strictly relevant to your specialty.`;
-        localInitializeSession(archetypePrompt);
+        setMessages(JSON.parse(stored).map(toVisible));
+      } catch {
+        initSession(buildPrompt(settings.brevity));
       }
     } else {
-      const archetypePrompt = `You are a specialist in the field of ${chatDetails.title}. ${chatDetails.instruction}. Only answer questions strictly relevant to your specialty.`;
-      localInitializeSession(archetypePrompt);
+      initSession(buildPrompt(settings.brevity));
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatDetails, navigate, id]);
-
-  useEffect(() => {
-    localStorage.setItem("chat_brevity", brevity);
-    localStorage.setItem("chat_fontSize", fontSize);
-    localStorage.setItem("chat_letterSpacing", letterSpacing);
-    localStorage.setItem("chat_lineHeight", lineHeight);
-  }, [brevity, fontSize, letterSpacing, lineHeight]);
-
-  // auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // handle submit using backend-friendly history format (parts/text)
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
+  }, [id]); // eslint-disable-line
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (validationCheck(input) || isLoading || !systemPrompt) return;
+    e?.preventDefault();
+    if (!input.trim() || isLoading || !systemPrompt) return;
 
-    // Build visible user message and backend user message
-    const userVisible = { role: "user", content: input.trim() };
-    const userBackend = visibleToBackend(userVisible);
-
-    // Load stored backend history
-    const storedBackendHistoryRaw =
-      sessionStorage.getItem(`chat_history_${id}`) || "[]";
-    let storedBackendHistory = [];
-    try {
-      storedBackendHistory = JSON.parse(storedBackendHistoryRaw);
-      if (!Array.isArray(storedBackendHistory)) storedBackendHistory = [];
-    } catch (err) {
-      storedBackendHistory = [];
-    }
-
-    // Prepare backend history to send: stored ack + all previous backend entries + this user message
-    const backendHistoryToSend = [...storedBackendHistory, userBackend];
-
-    // Optimistically update visible UI with user message
-    const visibleWithUser = [...messages, userVisible];
-    setMessages(visibleWithUser);
+    const userMsg = { role: "user", content: input.trim() };
+    const history = (() => {
+      try {
+        return JSON.parse(sessionStorage.getItem(`chat_history_${id}`) || "[]");
+      } catch {
+        return [];
+      }
+    })();
+    const backendHistory = [...history, toBackend(userMsg)];
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
     setError(null);
-    async function catch_err(res) {
-      if (res.ok) return null; // no error
 
-      let errMsg = "";
-      const contentType = res.headers.get("content-type");
-
-      try {
-      
-        if (contentType && contentType.includes("application/json")) {
-          const data = await res.json();
-          if (data.error) {
-            errMsg = data.error;
-          } else {
-            errMsg = JSON.stringify(data);
-          }
-        } else {
-          errMsg = await res.text();
-        }
-      } catch (e) {
-
-        errMsg = "Could not parse error message";
-      }
-      console.error(`Error ${res.status}: ${errMsg}`);
-
-      // Map status codes to friendly messages
-      switch (res.status) {
-        case 400:
-          return `${errMsg}`;
-        case 401:
-          return `${errMsg}`;
-        case 403:
-          return `${errMsg}`;
-        case 404:
-          return `${errMsg}`;
-        case 429:
-          return `${errMsg}`;
-        case 500:
-          return `${errMsg}`;
-        default:
-          return `Error ${res.status}: ${errMsg}`;
-      }
-    }
-    // POST body matches your Flask app: { chat: <string>, history: [ backend content objects ] }
-    const body = {
-      chat: input,
-      history: backendHistoryToSend,
-    };
+    const assistantMsg = { role: "model", parts: [{ text: "" }] };
     try {
       const res = await fetch(`${BACKEND_URL}/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json;charset=UTF-8",
-        },
-        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat: userMsg.content,
+          history: backendHistory,
+          prompt: systemPrompt,
+        }),
       });
 
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
       let modelText = "";
-      
-      if (!res.ok) {
-        // Server error — set a fallback message
-        let text = await catch_err(res);
-        modelText = text;
-      } else {
-        const data = await res.json().catch(() => null);
-        // Your Flask returns { "text": response.text }
-        modelText = (data && (data.text ?? data.message)) ?? "No response";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        modelText += decoder.decode(value).replace(/^data: /gm, "");
+        assistantMsg.parts = [{ text: modelText }];
+        setMessages([...backendHistory, assistantMsg].map(toVisible));
       }
-
-      const assistantBackend = {
-        role: "model",
-        parts: [{ text: modelText }],
-      };
-
-      // Update persisted backend history: stored ack + user + assistant
-      const finalBackendHistory = [...backendHistoryToSend, assistantBackend];
-      sessionStorage.setItem(
-        `chat_history_${id}`,
-        JSON.stringify(finalBackendHistory)
-      );
-
-      // Update visible messages from the backend history to keep them in sync
-      const visibleFromBackend = finalBackendHistory.map(backendToVisible);
-      setMessages(visibleFromBackend);
     } catch (err) {
-      console.error("Error contacting /chat:", err);
-
-      // Show an error reply in the UI but do NOT overwrite persisted (server) history
+      console.error(err);
       setMessages((prev) => [
         ...prev,
         {
@@ -271,189 +145,153 @@ const Chat = () => {
           content: "Sorry, I encountered an error. Please try again.",
         },
       ]);
-      setError("Failed to contact server. See console for details.");
+      setError("Failed to contact server.");
     } finally {
+      sessionStorage.setItem(
+        `chat_history_${id}`,
+        JSON.stringify([...backendHistory, assistantMsg]),
+      );
       setIsLoading(false);
     }
   };
 
-  // Handle brevity change
-  const handleBrevityChange = (level) => {
-    setBrevity(level);
-    localStorage.setItem("chat_brevity", level);
-  };
+  const setSetting = (k) => (v) => setSettings((s) => ({ ...s, [k]: v }));
 
-  const resetSettings = () => {
-    // Reset all settings to their default values
-    setBrevity("normal");
-    setFontSize(16);
-    setLetterSpacing(0);
-    setLineHeight(1.2);
-
-    // Update local storage
-    localStorage.setItem("chat_brevity", "normal");
-    localStorage.setItem("chat_fontSize", "16");
-    localStorage.setItem("chat_letterSpacing", "0");
-    localStorage.setItem("chat_lineHeight", "1.2");
-
-    // Apply the changes to the document
-    document.documentElement.style.setProperty("--message-font-size", `16px`);
-    document.documentElement.style.setProperty(
-      "--message-letter-spacing",
-      `0px`
-    );
-    document.documentElement.style.setProperty("--message-line-height", `1.2`);
-  };
-
-  const FontTools = {
-    Font: {
-      value: fontSize,
-      max: 24,
-      step: 1,
-      oc: (e) => setFontSize(parseInt(e.target.value)),
-    },
-    "Line Height": {
-      value: lineHeight,
+  const sliders = [
+    { label: "Font", key: "fontSize", min: 8, max: 24, step: 1, unit: "px" },
+    {
+      label: "Line Height",
+      key: "lineHeight",
       min: 0.5,
       max: 2.5,
       step: 0.1,
-      oc: (e) => setLineHeight(parseInt(e.target.value)),
+      unit: "",
     },
-    "Letter Spacing": {
-      value: letterSpacing,
+    {
+      label: "Letter Spacing",
+      key: "letterSpacing",
       min: -5,
       max: 3,
       step: 1,
-      oc: (e) => setLetterSpacing(parseInt(e.target.value)),
+      unit: "px",
     },
-  };
+  ];
+
   return (
     <div className="chat-container">
       <Navbar />
+
       <div className={`chat-header ${!showControls ? "compact" : ""}`}>
         <div className="header-content">
           <div className={`header-main ${!showControls ? "compact" : ""}`}>
             <div>
-              <h1>{chatDetails.title} Chat</h1>
-              {showControls && <p>{chatDetails.description}</p>}
+              <h1>{chatDetails?.title} Chat</h1>
+              {showControls && <p>{chatDetails?.description}</p>}
             </div>
             <button
               className="toggle-controls-btn"
-              onClick={() => setShowControls(!showControls)}
-              title={showControls ? "Hide controls" : "Show controls"}
+              onClick={() => setShowControls((s) => !s)}
             >
               {showControls ? "▲ Hide" : "▼ Show Controls"}
             </button>
           </div>
-          <div className={`chat-controls ${!showControls ? "hidden" : ""}`}>
-            <div className="brevity-controls">
-              <span>Response Style: </span>
-              <button
-                className={`brevity-btn ${brevity === "brief" ? "active" : ""}`}
-                onClick={() => handleBrevityChange("brief")}
-                title="Concise responses"
-              >
-                Brief
-              </button>
-              <button
-                className={`brevity-btn ${
-                  brevity === "normal" ? "active" : ""
-                }`}
-                onClick={() => handleBrevityChange("normal")}
-                title="Balanced responses"
-              >
-                Normal
-              </button>
-              <button
-                className={`brevity-btn ${
-                  brevity === "detailed" ? "active" : ""
-                }`}
-                onClick={() => handleBrevityChange("detailed")}
-                title="Detailed responses"
-              >
-                Detailed
-              </button>
-            </div>
-            <div className="action-buttons">
-              <button
-                className="clear-history-btn"
-                onClick={clearChatHistory}
-                title="Clear chat history"
-                disabled={isLoading}
-              >
-                Clear History
-              </button>
-              <button
-                className="reset-settings-btn"
-                onClick={resetSettings}
-                title="Reset all settings to default"
-                disabled={isLoading}
-              >
-                Reset Settings
-              </button>
-            </div>
-            {Object.entries(FontTools).map(([name, t]) => (
-              <div className="size-control" key={name}>
-                <span>
-                  {name}: {t.value}
-                  {name === "Line Height" ? "" : "px"}
-                </span>
-                <input
-                  type="range"
-                  min={t.min}
-                  max={t.max}
-                  step={t.step}
-                  value={t.value}
-                  onChange={t.oc}
-                  className="size-slider"
-                  title={`Adjust ${name}`}
-                />
+
+          {showControls && (
+            <div className="chat-controls">
+              <div className="brevity-controls">
+                <span>Response Style: </span>
+                {["brief", "normal", "detailed"].map((level) => (
+                  <button
+                    key={level}
+                    className={`brevity-btn ${settings.brevity === level ? "active" : ""}`}
+                    onClick={() => {
+                      setSetting("brevity")(level);
+                      setSystemPrompt(buildPrompt(level));
+                      sessionStorage.setItem(`chat_system_prompt_${id}`, prompt);
+                    }}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+              <div className="action-buttons">
+                <button
+                  className="clear-history-btn"
+                  onClick={() => {
+                    initSession(buildPrompt(settings.brevity));
+                    setError(null);
+                  }}
+                  disabled={isLoading}
+                >
+                  Clear History
+                </button>
+                <button
+                  className="reset-settings-btn"
+                  onClick={() => setSettings(DEFAULTS)}
+                  disabled={isLoading}
+                >
+                  Reset Settings
+                </button>
+              </div>
+              {sliders.map(({ label, key, min, max, step, unit }) => (
+                <div className="size-control" key={key}>
+                  <span>
+                    {label}: {settings[key]}
+                    {unit}
+                  </span>
+                  <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={settings[key]}
+                    onChange={(e) => setSetting(key)(Number(e.target.value))}
+                    className="size-slider"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <div
         className="chat-messages"
         style={{
-          "--message-font-size": `${fontSize}px`,
-          "--message-letter-spacing": `${letterSpacing}px`,
-          "--message-line-height": `${lineHeight}`,
+          "--message-font-size": `${settings.fontSize}px`,
+          "--message-letter-spacing": `${settings.letterSpacing}px`,
+          "--message-line-height": settings.lineHeight,
         }}
       >
-        {messages.map((message, index) => (
+        {messages.map((msg, i) => (
           <div
-            key={index}
-            className={`message ${message.role === "user" ? "user" : "ai"}`}
+            key={i}
+            className={`message ${msg.role === "user" ? "user" : "ai"}`}
           >
             <div className="message-content">
               <div className="message-sender">
-                {message.role === "user" ? "You" : "AI"}
+                {msg.role === "user" ? "You" : "AI"}
               </div>
               <div className="message-text">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             </div>
           </div>
         ))}
-
         {isLoading && (
           <div className="message ai">
             <div className="message-content">
               <div className="message-sender">AI</div>
               <div className="message-text typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span />
+                <span />
+                <span />
               </div>
             </div>
           </div>
         )}
-
         {error && <div className="error-message">{error}</div>}
-
-        <div ref={messagesEndRef} />
+        <div ref={bottomRef} />
       </div>
 
       <form onSubmit={handleSubmit} className="chat-input-container">
@@ -462,11 +300,16 @@ const Chat = () => {
           onChange={(e) => setInput(e.target.value)}
           placeholder={
             systemPrompt
-              ? `Message about ${chatDetails.title}... (Shift+Enter for new line)`
+              ? `Message about ${chatDetails?.title}... (Shift+Enter for new line)`
               : "Starting chat session..."
           }
           className="chat-input"
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
           disabled={isLoading || !systemPrompt}
         />
         <button
@@ -479,6 +322,4 @@ const Chat = () => {
       </form>
     </div>
   );
-};
-
-export default Chat;
+}
