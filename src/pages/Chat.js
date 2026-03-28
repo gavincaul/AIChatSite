@@ -131,9 +131,8 @@ export default function Chat() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        modelText += decoder.decode(value).replace(/^data: /gm, "");
-        assistantMsg.parts = [{ text: modelText }];
+        modelText += JSON.parse(decoder.decode(value).replace(/^data: /gm, "")).text;
+        assistantMsg.parts = [{ text: JSON.stringify(modelText) }];
         setMessages([...backendHistory, assistantMsg].map(toVisible));
       }
     } catch (err) {
