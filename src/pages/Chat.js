@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import chatOptions from "../data/chatOptions.json";
-import Navbar from "../components/Navbar";
+import Navbar from "../components/Navbar.js";
 import ReactMarkdown from "react-markdown";
 import "../styles/Chat.css";
-import { BACKEND_URL } from "../config";
+import { BACKEND_URL } from "../config.js";
 
 const DEFAULTS = {
   brevity: "normal",

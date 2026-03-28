@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import chatOptions from '../data/chatOptions.json';
 import '../styles/Home.css';
-import Navbar from '../components/Navbar';
+import Navbar from '../components/Navbar.js';
 
 const Home = () => {
   return (
