@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/AIChatSite/static/css/main.531b8651.css",
-    "main.js": "/AIChatSite/static/js/main.f02d1977.js",
-    "static/js/453.8f9d85b7.chunk.js": "/AIChatSite/static/js/453.8f9d85b7.chunk.js",
-    "index.html": "/AIChatSite/index.html",
-    "main.531b8651.css.map": "/AIChatSite/static/css/main.531b8651.css.map",
-    "main.f02d1977.js.map": "/AIChatSite/static/js/main.f02d1977.js.map",
-    "453.8f9d85b7.chunk.js.map": "/AIChatSite/static/js/453.8f9d85b7.chunk.js.map"
+    "main.css": "/static/css/main.f10b4d8c.css",
+    "main.js": "/static/js/main.f5d5a244.js",
+    "static/js/453.93ab3848.chunk.js": "/static/js/453.93ab3848.chunk.js",
+    "index.html": "/index.html",
+    "main.f10b4d8c.css.map": "/static/css/main.f10b4d8c.css.map",
+    "main.f5d5a244.js.map": "/static/js/main.f5d5a244.js.map",
+    "453.93ab3848.chunk.js.map": "/static/js/453.93ab3848.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.531b8651.css",
-    "static/js/main.f02d1977.js"
+    "static/css/main.f10b4d8c.css",
+    "static/js/main.f5d5a244.js"
   ]
 }
