@@ -114,7 +114,10 @@ export default function Chat() {
 
     const assistantMsg = { role: "model", parts: [{ text: "" }] };
     try {
-      const res = await fetch(`${BACKEND_URL}/chat`, {
+      let BACKEND_URL_CONFIG = window.location.href.includes("localhost")
+        ? "http://127.0.0.1:7119"
+        : BACKEND_URL;
+      const res = await fetch(`${BACKEND_URL_CONFIG}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -126,14 +129,37 @@ export default function Chat() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
       let modelText = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        modelText += JSON.parse(decoder.decode(value).replace(/^data: /gm, "")).text;
-        assistantMsg.parts = [{ text: modelText }];
-        setMessages([...backendHistory, assistantMsg].map(toVisible));
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith("data: ")) continue;
+
+          try {
+            const jsonStr = line.replace(/^data: /, "").trim();
+            const parsed = JSON.parse(jsonStr);
+
+            if (parsed.text) {
+              modelText += parsed.text;
+              assistantMsg.parts = [{ text: modelText }];
+              setMessages([...backendHistory, assistantMsg].map(toVisible));
+            }
+
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (parseErr) {
+            console.warn("Failed to parse chunk:", line, parseErr);
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -206,7 +232,10 @@ export default function Chat() {
                     onClick={() => {
                       setSetting("brevity")(level);
                       setSystemPrompt(buildPrompt(level));
-                      sessionStorage.setItem(`chat_system_prompt_${id}`, prompt);
+                      sessionStorage.setItem(
+                        `chat_system_prompt_${id}`,
+                        prompt,
+                      );
                     }}
                   >
                     {level.charAt(0).toUpperCase() + level.slice(1)}
